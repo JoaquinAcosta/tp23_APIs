@@ -199,59 +199,69 @@ const moviesController = {
     }
 
     },
-    edit: async (req, res) => {
-        let movieId = req.params.id;
-        let promMovies = Movies.findByPk(movieId, { include: ["genre", "actors"] });
-        let promGenres = Genres.findAll();
-        let promActors = Actors.findAll();
-        Promise.all([promMovies, promGenres, promActors])
-          .then(([Movie, allGenres, allActors]) => {
-            Movie.release_date = moment(Movie.release_date).format("L");
-            return res.render(
-              path.resolve(__dirname, "..", "views", "moviesEdit"),
-              { Movie, allGenres, allActors }
-            );
-          })
-          .catch((error) => res.send(error));
+      update: async function (req, res) {
+
+        try {
+            let updateMovie = await db.Movie.findByPk(req.params.id);
+
+            updateMovie.title = req.body.title;
+            updateMovie.rating = req.body.rating;
+            updateMovie.awards = req.body.awards;
+            updateMovie.release_date = req.body.release_date;
+            updateMovie.length = req.body.length;
+            updateMovie.genre_id = req.body.genre_id;
+
+            await updateMovie.save();
+
+            if(updateMovie){
+                return res.status(200).json({
+                    ok: true,
+                    meta : {
+                        total : 1,
+                        url : `${req.protocol}://${req.get('host')}/movies/${updateMovie.id}`
+                    },
+                    data : updateMovie
+                })
+            };
+
+        } catch (error) {
+            console.log(error);
+            return res.status(error.status || 500).json({
+                ok: false,
+                msg : error.message ? error.message : "Comuníquese con el administrador del sitio",
+            });
+        }
       },
-      update: function (req, res) {
-        let movieId = req.params.id;
-        Movies.update(
-          {
-            title: req.body.title,
-            rating: req.body.rating,
-            awards: req.body.awards,
-            release_date: req.body.release_date,
-            length: req.body.length,
-            genre_id: req.body.genre_id,
-          },
-          {
-            where: { id: movieId },
-          }
-        )
-          .then(() => {
-            return res.redirect("/movies");
-          })
-          .catch((error) => res.send(error));
-      },
-      delete: function (req, res) {
-        let movieId = req.params.id;
-        Movies.findByPk(movieId)
-          .then((Movie) => {
-            return res.render(
-              path.resolve(__dirname, "..", "views", "moviesDelete"),
-              { Movie }
-            );
-          })
-          .catch((error) => res.send(error));
-      },
-      destroy: function (req, res) {
-        let movieId = req.params.id;
-        Movies.destroy({ where: { id: movieId }, force: true }) // force: true es para asegurar que se ejecute la acción
-          .then(() => {
-            return res.redirect("/movies");
-          })
-          .catch((error) => res.send(error));
+      destroy: async function (req, res) {
+
+        try {
+            let movieId = req.params.id;
+            const movie = await db.Movie.findByPk(movieId);
+
+            await db.Movie.destroy({
+               where: { id: movieId },
+               force: true // force: true es para asegurar que se ejecute la acción
+            });
+            
+            if(movie){
+                return res.status(200).json({
+                    ok: true,
+                    meta : {
+                        status: 200,
+                        total : 1,
+                        url : `${req.protocol}://${req.get('host')}/movies`
+                    },
+                    data : movie
+                })
+            };
+
+        } catch (error) {
+            console.log(error);
+            return res.status(error.status || 500).json({
+                ok: false,
+                msg : error.message ? error.message : "Comuníquese con el administrador del sitio",
+            });
+        }
       }
 }
 
